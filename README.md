@@ -6,7 +6,7 @@
 
 ---
 
-## 📌 Descripción del Proyecto
+## Descripción del Proyecto
 
 ### ¿Qué es ClearBid NJ?
 **ClearBid NJ** es una plataforma web orientada a la inteligencia inmobiliaria previa a pujas (*pre-bid intelligence*), diseñada específicamente para inversores que participan en subastas judiciales (*sheriff sales*) en el estado de New Jersey, Estados Unidos.
@@ -29,13 +29,13 @@ ClearBid NJ centraliza los expedientes de subasta, ejecuta un motor de reglas de
 
 | Nombre Completo | Rol en el Proyecto | Correo Institucional | Perfil GitHub |
 | :--- | :--- | :--- | :--- |
-| Juan Pablo Lopez Peña | Product Owner & Backend Lead | [jua.lopezp@duocuc.cl] | https://github.com/Juanlopezpablo |
-| [Daniela Belen Cuevas Chavez] | Scrum Master & Frontend Lead | Dani.cuevasc@duocuc.cl https://github.com/dani-cuevas |
+| Juan Pablo Lopez Peña | Product Owner & Backend Lead | jua.lopezp@duocuc.cl | https://github.com/Juanlopezpablo |
+| Daniela Belen Cuevas Chavez | Scrum Master & Frontend Lead | Dani.cuevasc@duocuc.cl |https://github.com/dani-cuevas |
 
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 * **Frontend:** React 18+, TypeScript / JavaScript, Vite, Tailwind CSS, TanStack Query.
 * **Backend:** Python 3.11+, FastAPI (REST API), SQLAlchemy (ORM), Pydantic (Validaciones), Alembic (Migraciones).
@@ -45,7 +45,7 @@ ClearBid NJ centraliza los expedientes de subasta, ejecuta un motor de reglas de
 
 ---
 
-## 🏛️ Arquitectura de la Solución
+## Arquitectura de la Solución
 
 La solución sigue una arquitectura desacoplada por capas y basada en microservicios contenerizados:
 ┌──────────────────────────────────────────────────────────┐
@@ -73,14 +73,14 @@ La solución sigue una arquitectura desacoplada por capas y basada en microservi
 └──────────────────────────────────────────────────────────┘
 ---
 
-## 🔄 Metodología de Trabajo
+## Metodología de Trabajo
 
 El equipo aplica el marco de trabajo **Scrum**:
 * **Sprints:** Ciclos iterativos de 2 semanas orientados a entregables funcionales.
 * **Gestión Visual:** Seguimiento de historias de usuario, tareas y *Definition of Done (DoD)* a través de **GitHub Projects** y **GitHub Issues**.
 * **Estrategia Git:** Flujo basado en ramas de características (*feature branches*) y revisiones vía *Pull Requests (PR)* con validación de pruebas.
 
-## 🚀 Instrucciones para Ejecutar el Proyecto Localmente
+## Instrucciones para Ejecutar el Proyecto Localmente
 
 ### Prerrequisitos
 * [Git](https://git-scm.com/) instalado.
