@@ -1,5 +1,6 @@
 from .application import Application
 from .base import Base, BaseEntity
+from .comment import TicketComment
 from .document import Document, DocumentType
 from .epic import Epic
 from .incident import AffectedEnvironment, Incident, IncidentSeverity, IncidentStatus
@@ -16,6 +17,7 @@ from .ticket_event import TicketEvent, TicketEventType
 from .user import User
 
 __all__ = [
+    "TicketComment",
     "Base",
     "BaseEntity",
     "Role",

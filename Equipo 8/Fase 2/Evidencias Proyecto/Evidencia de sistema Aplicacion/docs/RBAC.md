@@ -208,7 +208,15 @@ se les mandó correo) como para invitaciones ya caducadas.
 | Crear / listar / ver / investigar / resolver | ✅ | ✅ | ✅ |
 | Asignar (`/assign`) | ❌ | ✅ | ❌ |
 
+### Comentarios de tickets (NEW-01)
+
+Todos los usuarios autenticados y activos pueden consultar y crear comentarios.
+Solo el autor puede editar su comentario; solo ADMIN puede eliminar comentarios.
+Las menciones admiten cualquier usuario activo y generan notificaciones internas.
+Ver [contrato, uso y migración de NEW-01](NEW-01.md).
+
 ## Verificación
+
 
 Los casos negativos de esta matriz están cubiertos por
 `backend/tests/integration/test_rbac.py` y `test_tickets.py`. Los tres casos
