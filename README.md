@@ -1,23 +1,60 @@
+# Capstone CoreStream App — Alloxentric
 
-# CoreStream
+Repositorio del proyecto Capstone **CoreStream App de Alloxentric**, organizado por fases y evidencias del Equipo 8.
 
-**CoreStream** es una plataforma de gestión de proyectos y tickets diseñada para equipos de desarrollo. Cuenta con un Workbench estilo Kanban, un Creador de Épicas/Tickets para Líderes de Equipo, notificaciones en tiempo real mediante WebSockets y analíticas de rendimiento para desarrolladores.
+CoreStream es una aplicación web para gestionar proyectos y tickets de equipos de desarrollo. Centraliza aplicaciones/proyectos, épicas, tickets y subtareas, con un tablero de trabajo Kanban, seguimiento de tiempos, notificaciones internas en tiempo real y analíticas del equipo.
 
-El backend funciona con **FastAPI** (Python) utilizando PostgreSQL y Redis. El frontend está construido con **Vue 3** y Vite.
+## Funcionalidades y tecnologías
 
-En producción corre en **Google Cloud**: frontend y API en Cloud Run detrás de un balanceador HTTPS, PostgreSQL y Redis en una VM privada, y documentos en Cloud Storage. Disponible en <https://corestream.alloxentric.com>.
+- Gestión de aplicaciones, épicas, tickets, subtareas y asignaciones.
+- Workbench Kanban para organizar y seguir el trabajo.
+- Autenticación y permisos por rol: `ADMIN`, `TEAM_LEADER` y `DEVELOPER`.
+- Notificaciones mediante WebSockets y Redis.
+- Gestión de documentos, reuniones, incidentes y tickets de soporte.
+- Frontend: Vue 3, TypeScript, Vite, Pinia y Tailwind CSS.
+- Backend: FastAPI, SQLAlchemy y Alembic; persistencia en PostgreSQL.
 
-## 📚 Documentación
+La documentación de despliegue describe una infraestructura en Google Cloud con frontend y API en Cloud Run, PostgreSQL y Redis en una VM privada y documentos en Cloud Storage.
 
-Toda la documentación se ha consolidado en el directorio `docs/` para ayudarte a entender el *Cómo*, *Por qué* y *Qué* de CoreStream:
+## Ubicación del proyecto
 
-- 🏗️ **[Arquitectura](docs/ARCHITECTURE.md)** - Flujo del sistema, tecnologías e interacción de componentes.
-- ⚙️ **[Guía de Instalación](docs/SETUP.md)** - Instrucciones para ejecutar el proyecto localmente vía Docker o de forma manual.
-- ☁️ **[Despliegue en GCP](docs/DEPLOYMENT.md)** - Infraestructura, publicación de versiones, respaldos y operación.
-- 🔐 **[Permisos (RBAC)](docs/RBAC.md)** - Roles y matriz de autorización.
-- 🔮 **[Trabajo Futuro](docs/FUTURE_WORK.md)** - Ideas y tareas planeadas para el desarrollo futuro.
-- 🎨 **[Colores de Marca](docs/COLORS.md)** - Pautas para la paleta de colores de la interfaz.
+El código ejecutable y su documentación están en:
 
----
+[`Equipo 8/Fase 2/Evidencias Proyecto/Evidencia de sistema Aplicacion/`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/)
 
-*En octubre de 2026 CoreStream se migró de una VM en Azure a Google Cloud. La historia de esa migración está al final de [DEPLOYMENT.md](docs/DEPLOYMENT.md).*
+| Ruta dentro de la aplicación | Contenido |
+|---|---|
+| [`backend/`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/backend/) | API, modelos, servicios, migraciones y pruebas |
+| [`frontend/`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/frontend/) | Interfaz web y pruebas del cliente |
+| [`docs/`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/) | Arquitectura, instalación, despliegue y permisos |
+| [`docker-compose.yml`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docker-compose.yml) y [`docker-compose.dev.yml`](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docker-compose.dev.yml) | Configuración de contenedores y entorno de desarrollo |
+
+Las carpetas `Equipo 8/Fase 1/` y `Equipo 8/Fase 2/` reúnen las evidencias académicas del Capstone.
+
+## Ejecución local
+
+Se requiere Docker con Docker Compose. Desde la raíz de este repositorio, entrar primero a la carpeta de la aplicación:
+
+```bash
+cd "Equipo 8/Fase 2/Evidencias Proyecto/Evidencia de sistema Aplicacion"
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+En PowerShell, usar `Copy-Item .env.example .env` para copiar el archivo de entorno.
+
+- Interfaz web: <http://localhost:5173>
+- API: <http://localhost:8000>
+- Documentación interactiva de la API en desarrollo: <http://localhost:8000/api/docs>
+
+Consultar la guía de instalación para crear el primer administrador, configurar el entorno y ejecutar las pruebas.
+
+## Documentación
+
+- [Presentación de la aplicación](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/README.md)
+- [Arquitectura](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/ARCHITECTURE.md)
+- [Instalación y pruebas](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/SETUP.md)
+- [Despliegue y operación en Google Cloud](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/DEPLOYMENT.md)
+- [Roles y permisos (RBAC)](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/RBAC.md)
+- [Trabajo futuro](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/FUTURE_WORK.md)
+- [Colores de marca](Equipo%208/Fase%202/Evidencias%20Proyecto/Evidencia%20de%20sistema%20Aplicacion/docs/COLORS.md)
