@@ -1,0 +1,8 @@
+# Scripts y archivos que corren en Linux (VM de GCP, contenedores): siempre
+# con saltos de línea LF, aunque el repo se clone en Windows. Con CRLF, bash
+# falla con "$'\r': command not found".
+*.sh            text eol=lf
+infra/**        text eol=lf
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+*.conf          text eol=lf

@@ -1,0 +1,137 @@
+# =====================================================================
+# CoreStream — perfil de PRODUCCIÓN (prueba local de las imágenes)
+# =====================================================================
+# Producción real corre en GCP (Cloud Run + VM de datos), no con este
+# fichero — ver docs/DEPLOYMENT.md. Este perfil levanta las MISMAS imágenes
+# que se despliegan en Cloud Run, para probarlas en local antes de publicar.
+#
+# Postgres y Redis NO corren aquí: DATABASE_URL y REDIS_URL vienen de .env
+# y deben apuntar a instancias existentes (por ejemplo, las del overlay de
+# desarrollo o unas locales).
+#
+# "migrate" corre alembic upgrade head una vez antes del backend, igual que
+# el Cloud Run Job "corestream-migrate" en GCP.
+#
+# Variables: copiar .env.example a .env en este mismo directorio y rellenar
+# ANTES de levantar. Los valores por defecto de abajo son placeholders
+# obvios a propósito — con ENVIRONMENT=production (el default de este
+# fichero), app/config.py aborta el arranque si SECRET_KEY sigue siendo un
+# placeholder, si DEBUG=true, si ALLOWED_ORIGINS es "*", o si falta
+# STORAGE_BACKEND=gcs con GCS_BUCKET.
+#
+# Para desarrollo local (bind mounts, --reload, servidor de Vite, Postgres/
+# Redis propios y descartables — docker-compose.dev.yml los define):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# =====================================================================
+
+services:
+  backend:
+    image: corestream-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: corestream-backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: &backend-env
+      # Postgres/Redis externos a este fichero: DATABASE_URL/REDIS_URL
+      # vienen completas desde .env.
+      DATABASE_URL: ${DATABASE_URL:-CAMBIAR-en-.env}
+      REDIS_URL: ${REDIS_URL:-CAMBIAR-en-.env}
+      SECRET_KEY: ${SECRET_KEY:-CAMBIAR-en-.env-openssl-rand-hex-32}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://CAMBIAR-en-.env}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_NAME: ${APP_NAME:-CoreStream API}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-False}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-CoreStream}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}
+      XFF_CLIENT_POSITION: ${XFF_CLIENT_POSITION:-0}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-gcs}
+      GCS_BUCKET: ${GCS_BUCKET:-}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+    ports:
+      # 8010 por defecto: herencia del despliegue en Azure (8000 lo usaba
+      # otro proyecto de esa VM).
+      - "0.0.0.0:${BACKEND_PORT:-8010}:8080"
+    volumes:
+      - storage-data:/app/storage
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      # /api/health comprueba Postgres y Redis de verdad (no solo que el
+      # proceso responda) y devuelve 503 si alguno falla. python3 -c en vez
+      # de curl porque la imagen (python:3.11-slim) no trae curl instalado.
+      test:
+        - CMD
+        - python3
+        - -c
+        - import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://localhost:8080/api/health', timeout=3).status == 200 else 1)
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # One-shot schema migration, same role as the Cloud Run Job
+  # "corestream-migrate": the backend image no longer migrates on start.
+  migrate:
+    image: corestream-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    environment: *backend-env
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    container_name: corestream-frontend
+    depends_on:
+      - backend
+    ports:
+      - "0.0.0.0:${FRONTEND_PORT:-8080}:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=3", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  storage-data:
+    driver: local
