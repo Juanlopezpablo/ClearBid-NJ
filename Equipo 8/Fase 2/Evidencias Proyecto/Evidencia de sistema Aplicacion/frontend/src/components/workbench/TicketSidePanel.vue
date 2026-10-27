@@ -121,7 +121,7 @@
         <!-- ================================================================ -->
         <!-- Descripción, subtareas, y log de actividad -->
         <!-- ================================================================ -->
-        <div class="flex-1 overflow-y-auto">
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-label="Detalles y comentarios del ticket" tabindex="0">
           <!-- ================================================================ -->
           <!-- SUB-SECCIÓN: Descripción -->
           <!-- ================================================================ -->
@@ -270,7 +270,7 @@
         <!-- ================================================================ -->
         <!-- Componente ActionDock con botones principales -->
         <!-- ================================================================ -->
-        <div class="flex-shrink-0 p-6 bg-[var(--bg-card)] border-t border-[var(--border-subtle)]">
+        <div class="max-h-[35%] flex-shrink-0 overflow-y-auto overscroll-contain px-6 py-3 bg-[var(--bg-card)] border-t border-[var(--border-subtle)]" aria-label="Acciones del ticket" tabindex="0">
             <ActionDock
               :ticket="ticketWithCurrentStatus"
               :is-pr-valid="canComplete"
