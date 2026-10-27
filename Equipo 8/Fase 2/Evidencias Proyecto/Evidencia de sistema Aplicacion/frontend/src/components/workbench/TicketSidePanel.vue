@@ -175,6 +175,7 @@
           <!-- SUB-SECCIÓN: Log de Actividad -->
           <!-- ================================================================ -->
           <TicketComments v-if="isOpen" :key="ticket.id" :ticket-id="ticket.id" />
+          <EvidenceFiles v-if="isOpen" :ticket-id="ticket.id" />
         <div class="p-6 border-b border-[var(--border-subtle)]">
             <h3 class="text-sm font-semibold text-[var(--text-primary)] mb-3">Actividad</h3>
             <ActivityLog :events="localEvents" />
@@ -323,6 +324,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import TimeTracker from '@/components/shared/TimeTracker.vue'
 import TicketComments from '@/components/shared/TicketComments.vue'
+import EvidenceFiles from '@/components/shared/EvidenceFiles.vue'
 import SubtaskChecklist from './SubtaskChecklist.vue'
 import ActivityLog from './ActivityLog.vue'
 import ActionDock from './ActionDock.vue'

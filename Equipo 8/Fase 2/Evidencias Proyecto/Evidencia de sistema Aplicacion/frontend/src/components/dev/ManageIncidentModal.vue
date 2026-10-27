@@ -4,6 +4,7 @@ import { Activity, X } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import { useDialogStore } from '@/stores/dialog'
 import type { Incident } from '@/types'
+import EvidenceFiles from '@/components/shared/EvidenceFiles.vue'
 
 const props = defineProps<{
   show: boolean
@@ -60,7 +61,7 @@ const handleSubmit = async () => {
 
 <template>
   <div v-if="show && incident" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-    <div class="bg-white dark:bg-[var(--bg-panel)] rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-white dark:bg-[var(--bg-panel)] rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
       
       <!-- Header -->
       <div class="px-6 py-4 border-b border-slate-100 dark:border-[var(--border-subtle)] flex items-center justify-between bg-slate-50/50 dark:bg-transparent">
@@ -77,7 +78,7 @@ const handleSubmit = async () => {
       </div>
 
       <!-- Body -->
-      <div class="p-6 overflow-y-auto space-y-4">
+      <div class="min-h-0 flex-1 p-6 overflow-y-auto space-y-4">
         <div class="mb-2">
           <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ incident.title }}</p>
           <p class="text-xs text-slate-500 dark:text-slate-400">ID: {{ incident.id }}</p>
@@ -109,6 +110,7 @@ const handleSubmit = async () => {
             class="w-full px-4 py-3 bg-slate-50 dark:bg-[var(--bg-card)] border border-slate-200 dark:border-[var(--border-subtle)] rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none"
           ></textarea>
         </div>
+        <EvidenceFiles :incident-id="incident.id" />
       </div>
 
       <!-- Footer -->

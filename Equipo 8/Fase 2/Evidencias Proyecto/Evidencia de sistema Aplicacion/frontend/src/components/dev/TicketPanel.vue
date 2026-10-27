@@ -32,8 +32,9 @@
       </div>
 
       <!-- BODY (scrollable) -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="min-h-0 flex-1 overflow-y-auto">
         <TicketComments :key="ticket.id" :ticket-id="ticket.id" />
+        <EvidenceFiles :ticket-id="ticket.id" />
         <!-- Info general -->
         <div class="px-6 py-4 border-b border-[var(--border-subtle)]">
           <div class="flex gap-4 text-sm">
@@ -297,6 +298,7 @@
 
 <script setup lang="ts">
 import TicketComments from '@/components/shared/TicketComments.vue'
+import EvidenceFiles from '@/components/shared/EvidenceFiles.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api } from '@/services/api'
 import { useTicketsStore } from '@/stores/tickets'

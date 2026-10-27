@@ -19,7 +19,8 @@
         multiple
         @change="handleFileSelect"
         class="hidden"
-        accept=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.cs,.rb,.go,.rs,.php,.swift,.kt,.scala,.md,.pdf,.docx,.txt,.rst,.doc,.json,.yaml,.yml,.xml,.sql,.csv,.toml,.env"
+        aria-label="Seleccionar archivos y evidencia"
+        accept=".py,.js,.ts,.jsx,.tsx,.java,.cpp,.c,.cs,.rb,.go,.rs,.php,.swift,.kt,.scala,.md,.pdf,.docx,.txt,.rst,.doc,.json,.yaml,.yml,.xml,.sql,.csv,.toml,.env,.png,.jpg,.jpeg,.webp"
       />
 
       <svg
@@ -40,7 +41,7 @@
         Arrastra archivos aquí o haz clic para seleccionar
       </p>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Máximo 25 MB por archivo · Código, documentación y datos
+        Máximo 25 MB por archivo · Documentos, código, datos y capturas PNG/JPG/WebP. Sin videos ni audios.
       </p>
 
       <button
@@ -102,7 +103,7 @@
         <div
           v-for="doc in uploadedFiles"
           :key="doc.id"
-          class="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-3"
+          class="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-3"
         >
           <!-- Badge de tipo -->
           <div
@@ -115,10 +116,15 @@
             <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ doc.filename }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ formatFileSize(doc.file_size) }} · {{ formatDate(doc.created_at) }}
+              · {{ doc.uploaded_by?.full_name || 'Usuario eliminado' }}
             </p>
           </div>
 
           <div class="flex gap-1 shrink-0">
+            <button v-if="isImage(doc)" type="button" class="p-1.5 text-blue-600 text-xs underline"
+              :disabled="previewLoading === doc.id" @click="previewFile(doc)">
+              {{ previews[doc.id] ? 'Ocultar captura' : 'Ver captura' }}
+            </button>
             <button
               @click="downloadFile(doc)"
               type="button"
@@ -130,6 +136,7 @@
               </svg>
             </button>
             <button
+              v-if="canDelete(doc)"
               @click="deleteFile(doc.id)"
               type="button"
               class="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
@@ -140,6 +147,8 @@
               </svg>
             </button>
           </div>
+          <img v-if="previews[doc.id]" :src="previews[doc.id]" :alt="'Vista previa de ' + doc.filename"
+            class="w-full max-h-72 object-contain rounded-lg" />
         </div>
       </div>
     </div>
@@ -152,6 +161,7 @@
     <transition name="fade">
       <div
         v-if="message"
+        :role="message.type === 'error' ? 'alert' : 'status'"
         :class="[
           'mt-4 p-3 rounded-lg text-sm',
           message.type === 'success'
@@ -166,9 +176,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { api } from '@/services/api'
+import { ref, onBeforeUnmount, watch } from 'vue'
+import { api, apiClient } from '@/services/api'
 import { useDialogStore } from '@/stores/dialog'
+import { useAuthStore } from '@/stores/auth'
 
 interface ApiDocument {
   id: string
@@ -178,13 +189,16 @@ interface ApiDocument {
   doc_type: string
   epic_id?: string | null
   ticket_id?: string | null
+  incident_id?: string | null
   uploaded_by_id?: string | null
+  uploaded_by?: { full_name?: string | null }
   created_at: string
 }
 
 const props = defineProps<{
   epicId?: string
   ticketId?: string
+  incidentId?: string
 }>()
 
 const emit = defineEmits<{
@@ -193,20 +207,25 @@ const emit = defineEmits<{
 }>()
 
 const dialogStore = useDialogStore()
+const auth = useAuthStore()
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const uploadingFiles = ref<{ id: string; name: string; size: number; progress: number }[]>([])
 const uploadedFiles = ref<ApiDocument[]>([])
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const isLoading = ref(false)
+const previews = ref<Record<string, string>>({})
+const previewLoading = ref<string | null>(null)
+let generation = 0
+let messageTimer: ReturnType<typeof setTimeout> | undefined
+const target = () => ({ epicId: props.epicId, ticketId: props.ticketId, incidentId: props.incidentId })
+const errorMessage = (error: any, fallback: string) => error?.response?.data?.detail || error?.message || fallback
+const isImage = (doc: ApiDocument) => /\.(png|jpe?g|webp)$/i.test(doc.filename)
+const canDelete = (doc: ApiDocument) => doc.uploaded_by_id === auth.user?.id || auth.isAdmin ||
+  (!doc.ticket_id && !doc.incident_id && auth.user?.role === 'TEAM_LEADER')
 
-onMounted(async () => {
-  await loadFiles()
-})
-
-watch([() => props.epicId, () => props.ticketId], async () => {
-  await loadFiles()
-})
+// Evitar que una respuesta pendiente muestre archivos de otro ticket o incidencia.
+onBeforeUnmount(() => { generation++; clearTimeout(messageTimer); clearPreviews() })
 
 const handleFileSelect = (event: Event) => {
   const files = (event.target as HTMLInputElement).files
@@ -220,8 +239,11 @@ const handleDrop = (event: DragEvent) => {
 }
 
 const handleFiles = async (files: File[]) => {
+  const destination = target()
+  const current = generation
   for (const file of files) {
-    await uploadFile(file)
+    if (current !== generation) break
+    await uploadFile(file, destination, current)
   }
 }
 
@@ -231,7 +253,15 @@ const getDocType = (filename: string): string => {
   return codeExts.includes(ext) ? 'CODE' : 'DOCUMENTATION'
 }
 
-const uploadFile = async (file: File) => {
+const uploadFile = async (file: File, destination: ReturnType<typeof target>, current: number) => {
+  if (file.size > 25 * 1024 * 1024) {
+    showMessage('error', 'El archivo supera el límite de 25 MB')
+    return
+  }
+  if (/^(audio|video)\//i.test(file.type) || !/\.(py|js|ts|jsx|tsx|java|cpp|c|cs|rb|go|rs|php|swift|kt|scala|md|pdf|docx|txt|rst|doc|json|yaml|yml|xml|sql|csv|toml|env|png|jpe?g|webp)$/i.test(file.name)) {
+    showMessage('error', 'Formato no permitido. No se admiten videos ni audios.')
+    return
+  }
   const uploadId = Math.random().toString(36).substring(2, 11)
   uploadingFiles.value.push({ id: uploadId, name: file.name, size: file.size, progress: 0 })
 
@@ -239,21 +269,20 @@ const uploadFile = async (file: File) => {
     const uploadItem = uploadingFiles.value.find((f) => f.id === uploadId)
 
     const result = await api.documents.upload(file, {
-      epicId:   props.epicId,
-      ticketId: props.ticketId,
+      ...destination,
       docType:  getDocType(file.name),
     })
 
     // Unwrap ApiResponse<Document> → ApiDocument (mismo patrón que loadFiles() abajo)
     const doc = ((result as any)?.data ?? result) as ApiDocument
+    if (current !== generation) return
 
     if (uploadItem) uploadItem.progress = 100
     uploadedFiles.value.unshift(doc)
     emit('uploaded', doc)
     showMessage('success', `"${file.name}" cargado exitosamente`)
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : `Error al cargar ${file.name}`
-    showMessage('error', msg)
+    if (current === generation) showMessage('error', errorMessage(error, `Error al cargar ${file.name}`))
   } finally {
     uploadingFiles.value = uploadingFiles.value.filter((f) => f.id !== uploadId)
     if (fileInput.value) fileInput.value.value = ''
@@ -261,21 +290,23 @@ const uploadFile = async (file: File) => {
 }
 
 const loadFiles = async () => {
+  const current = ++generation
+  clearPreviews()
+  uploadedFiles.value = []
+  uploadingFiles.value = []
+  message.value = null
   isLoading.value = true
   try {
-    const filters: { epicId?: string; ticketId?: string } = {}
-    if (props.epicId) filters.epicId = props.epicId
-    if (props.ticketId) filters.ticketId = props.ticketId
+    const filters = target()
 
     const res = await api.documents.list(filters)
     // Backend returns array directly; the store pattern handles both wrapped/unwrapped
     const docs = (res as unknown as { data?: ApiDocument[] })?.data ?? (res as unknown as ApiDocument[])
-    uploadedFiles.value = Array.isArray(docs) ? docs : []
+    if (current === generation) uploadedFiles.value = Array.isArray(docs) ? docs : []
   } catch (error) {
-    console.error('Error al cargar documentos:', error)
-    uploadedFiles.value = []
+    if (current === generation) showMessage('error', errorMessage(error, 'No se pudieron cargar los archivos'))
   } finally {
-    isLoading.value = false
+    if (current === generation) isLoading.value = false
   }
 }
 
@@ -289,9 +320,14 @@ const downloadFile = async (doc: ApiDocument) => {
 }
 
 const deleteFile = async (docId: string) => {
+  const current = generation
   if (!(await dialogStore.confirm('¿Eliminar este archivo permanentemente?'))) return
+  if (current !== generation) return
   try {
     await api.documents.delete(docId)
+    if (current !== generation) return
+    if (previews.value[docId]) URL.revokeObjectURL(previews.value[docId])
+    delete previews.value[docId]
     uploadedFiles.value = uploadedFiles.value.filter((f) => f.id !== docId)
     emit('deleted', docId)
     showMessage('success', 'Archivo eliminado exitosamente')
@@ -302,9 +338,40 @@ const deleteFile = async (docId: string) => {
 }
 
 const showMessage = (type: 'success' | 'error', text: string) => {
+  clearTimeout(messageTimer)
   message.value = { type, text }
-  setTimeout(() => { message.value = null }, 5000)
+  messageTimer = setTimeout(() => { message.value = null }, 8000)
 }
+
+function clearPreviews() {
+  Object.values(previews.value).forEach(url => URL.revokeObjectURL(url))
+  previews.value = {}
+  previewLoading.value = null
+}
+
+async function previewFile(doc: ApiDocument) {
+  if (previews.value[doc.id]) {
+    URL.revokeObjectURL(previews.value[doc.id])
+    delete previews.value[doc.id]
+    return
+  }
+  const current = generation
+  previewLoading.value = doc.id
+  try {
+    const { data } = await apiClient.get<{ url: string }>('/documents/' + doc.id + '/download-url')
+    // La URL firmada es la única credencial: no enviar el token de sesión al almacenamiento.
+    const response = await fetch(data.url)
+    if (!response.ok) throw new Error('No se pudo cargar la captura')
+    const blob = await response.blob()
+    if (current === generation) previews.value[doc.id] = URL.createObjectURL(blob)
+  } catch (error) {
+    if (current === generation) showMessage('error', errorMessage(error, 'No se pudo cargar la captura'))
+  } finally {
+    if (current === generation) previewLoading.value = null
+  }
+}
+
+watch([() => props.epicId, () => props.ticketId, () => props.incidentId], loadFiles, { immediate: true })
 
 const formatFileSize = (bytes: number): string => {
   if (!bytes || bytes === 0) return '0 Bytes'

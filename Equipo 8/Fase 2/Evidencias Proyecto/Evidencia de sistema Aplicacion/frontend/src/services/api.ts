@@ -398,7 +398,7 @@ const apiErrorMessage = (err: unknown, fallback: string): string => {
  */
 const uploadDocumentFile = async (
   file: File,
-  target: { epicId?: string; ticketId?: string; docType?: string }
+  target: { epicId?: string; ticketId?: string; incidentId?: string; docType?: string }
 ): Promise<any> => {
   let signed: SignedUploadResponse
   try {
@@ -408,6 +408,7 @@ const uploadDocumentFile = async (
       content_type: file.type || 'application/octet-stream',
       epic_id: target.epicId || null,
       ticket_id: target.ticketId || null,
+      incident_id: target.incidentId || null,
       doc_type: target.docType || 'DOCUMENTATION',
     })
     signed = res.data
@@ -1678,6 +1679,7 @@ const realApi = {
     list: async (filters?: {
       ticketId?: string
       epicId?: string
+      incidentId?: string
     }): Promise<ApiResponse<Document[]>> => {
       const response = await apiClient.get<any>(
         '/documents/',
@@ -1698,6 +1700,7 @@ const realApi = {
         createdAt: d.createdAt ?? d.created_at,
         epicId: d.epicId ?? d.epic_id,
         ticketId: d.ticketId ?? d.ticket_id,
+        incidentId: d.incidentId ?? d.incident_id,
         fileSize: d.fileSize ?? d.file_size,
         mimeType: d.mimeType ?? d.mime_type,
       }))
@@ -1714,6 +1717,7 @@ const realApi = {
     upload: async (file: File, data: {
       ticketId?: string
       epicId?: string
+      incidentId?: string
       docType?: string
     }): Promise<ApiResponse<Document>> => {
       return (await uploadDocumentFile(file, data)) as ApiResponse<Document>

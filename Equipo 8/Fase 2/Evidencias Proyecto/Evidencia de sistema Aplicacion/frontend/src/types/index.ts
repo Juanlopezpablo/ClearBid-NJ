@@ -902,6 +902,9 @@ export interface Document {
    */
   ticketId?: string
 
+  /** Incidencia asociada al archivo, cuando corresponde. */
+  incidentId?: string
+
   /**
    * ID del usuario que cargó el documento
    */
