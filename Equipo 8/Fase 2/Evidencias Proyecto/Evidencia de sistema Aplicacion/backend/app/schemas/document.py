@@ -21,6 +21,7 @@ class DocumentResponse(BaseModel):
     doc_type: str
     epic_id: Optional[UUID] = None
     ticket_id: Optional[UUID] = None
+    incident_id: Optional[UUID] = None
     uploaded_by_id: Optional[UUID] = None
     uploaded_by: Optional[UploaderResponse] = None
     created_at: datetime
@@ -45,6 +46,7 @@ class UploadUrlRequest(BaseModel):
     content_type: Optional[str] = Field(None, max_length=100)
     epic_id: Optional[UUID] = Field(None, validation_alias=AliasChoices("epic_id", "epicId"))
     ticket_id: Optional[UUID] = Field(None, validation_alias=AliasChoices("ticket_id", "ticketId"))
+    incident_id: Optional[UUID] = Field(None, validation_alias=AliasChoices("incident_id", "incidentId"))
     doc_type: Optional[str] = Field(None, max_length=20, validation_alias=AliasChoices("doc_type", "docType"))
 
 

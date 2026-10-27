@@ -36,7 +36,7 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.database import get_db
 from app.middleware.auth import get_current_user
-from app.models import Document, Epic, Ticket, User
+from app.models import Document, Epic, Incident, Ticket, User
 from app.schemas.document import (
     ConfirmUploadRequest,
     DocumentResponse,
@@ -53,7 +53,7 @@ from app.services.storage import (
     content_disposition,
     get_storage,
 )
-from app.services.ticket_permissions import is_admin_or_leader
+from app.services.ticket_permissions import get_role_name, is_admin_or_leader
 from app.services.translation_service import (
     create_translated_file,
     extract_text_from_file,
@@ -65,14 +65,40 @@ router = APIRouter(tags=["Documentos"])
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
 
 ALLOWED_EXTENSIONS = {
-    # Code
+    # Código
     ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cpp", ".c", ".cs",
     ".rb", ".go", ".rs", ".php", ".swift", ".kt", ".scala",
-    # Documentation
+    # Documentación
     ".md", ".pdf", ".docx", ".txt", ".rst", ".doc",
-    # Data
+    # Datos
     ".json", ".yaml", ".yml", ".xml", ".sql", ".csv", ".toml", ".env",
+    # Capturas de evidencia; no se admiten videos ni audios.
+    ".png", ".jpg", ".jpeg", ".webp",
 }
+
+IMAGE_MIME_TYPES = {".png": "image/png", ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+async def active_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_active:
+        raise HTTPException(403, "Usuario inactivo")
+    return current_user
+
+
+async def _validate_target(db, epic_id, ticket_id, incident_id):
+    if incident_id and (epic_id or ticket_id):
+        raise HTTPException(400, "Selecciona una incidencia o una épica/ticket, no ambos")
+    if not (epic_id or ticket_id or incident_id):
+        raise HTTPException(400, "El documento debe asociarse a una épica, ticket o incidencia")
+    for model, target, name in ((Epic, epic_id, "Épica"), (Ticket, ticket_id, "Ticket"),
+                                (Incident, incident_id, "Incidencia")):
+        if target and await db.get(model, target) is None:
+            raise HTTPException(404, f"{name} no encontrado")
+    if epic_id and ticket_id:
+        ticket = await db.get(Ticket, ticket_id)
+        if ticket.epic_id != epic_id:
+            raise HTTPException(400, "El ticket no pertenece a la épica seleccionada")
 
 UPLOAD_TOKEN_TYPE = "doc-upload"
 _CONTENT_TYPE_RE = re.compile(r"^[\w.+-]+/[\w.+-]+$")
@@ -107,14 +133,17 @@ def _clean_filename(raw_name: str) -> tuple[str, str, str]:
 
 
 async def _dedupe_filename(
-    db: AsyncSession, stem: str, ext: str, epic_id: Optional[UUID], ticket_id: Optional[UUID]
+    db: AsyncSession, stem: str, ext: str, epic_id: Optional[UUID], ticket_id: Optional[UUID],
+    incident_id: Optional[UUID] = None,
 ) -> str:
     """Evita nombres repetidos dentro de la misma épica/ticket: "x (1).ext"."""
     name_query = select(Document.filename)
-    if epic_id:
-        name_query = name_query.where(Document.epic_id == epic_id)
-    elif ticket_id:
+    if ticket_id:
         name_query = name_query.where(Document.ticket_id == ticket_id)
+    elif incident_id:
+        name_query = name_query.where(Document.incident_id == incident_id)
+    elif epic_id:
+        name_query = name_query.where(Document.epic_id == epic_id)
     names_result = await db.execute(name_query)
     existing_names = {row[0] for row in names_result.fetchall()}
 
@@ -194,14 +223,17 @@ async def _local_copy(document: Document) -> AsyncIterator[str]:
 async def list_documents(
     epic_id: Optional[UUID] = Query(None, alias="epicId"),
     ticket_id: Optional[UUID] = Query(None, alias="ticketId"),
-    current_user=Depends(get_current_user),
+    incident_id: Optional[UUID] = Query(None, alias="incidentId"),
+    current_user=Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[DocumentResponse]:
     query = select(Document).options(selectinload(Document.uploaded_by))
     if epic_id:
         query = query.where(Document.epic_id == epic_id)
-    elif ticket_id:
+    if ticket_id:
         query = query.where(Document.ticket_id == ticket_id)
+    if incident_id:
+        query = query.where(Document.incident_id == incident_id)
     query = query.order_by(Document.created_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
@@ -219,30 +251,16 @@ async def list_documents(
 )
 async def request_upload_url(
     req: UploadUrlRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ) -> UploadUrlResponse:
-    if not req.epic_id and not req.ticket_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El documento debe asociarse a una épica o a un ticket",
-        )
-    if req.epic_id and not (await db.execute(select(Epic.id).where(Epic.id == req.epic_id))).first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Épica con ID {req.epic_id} no encontrada"
-        )
-    if req.ticket_id and not (await db.execute(select(Ticket.id).where(Ticket.id == req.ticket_id))).first():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Ticket con ID {req.ticket_id} no encontrado"
-        )
+    await _validate_target(db, req.epic_id, req.ticket_id, req.incident_id)
 
     name, _, ext = _clean_filename(req.filename)
-    if ext and ext not in ALLOWED_EXTENSIONS:
+    if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Extensión '{ext}' no permitida. Tipos soportados: código, documentación y datos."
+            detail=f"Extensión '{ext}' no permitida. Se admiten código, documentos, datos y capturas PNG/JPG/WebP."
         )
     if req.size > MAX_FILE_SIZE:
         raise HTTPException(
@@ -251,6 +269,10 @@ async def request_upload_url(
         )
 
     content_type = (req.content_type or "").split(";")[0].strip().lower()
+    if content_type.startswith(("audio/", "video/")):
+        raise HTTPException(400, "No se admiten videos ni audios")
+    if ext in IMAGE_MIME_TYPES:
+        content_type = IMAGE_MIME_TYPES[ext]
     if not _CONTENT_TYPE_RE.match(content_type):
         content_type = "application/octet-stream"
 
@@ -267,6 +289,7 @@ async def request_upload_url(
             "ct": content_type,
             "epic": str(req.epic_id) if req.epic_id else None,
             "ticket": str(req.ticket_id) if req.ticket_id else None,
+            "incident": str(req.incident_id) if req.incident_id else None,
             "dt": _resolve_doc_type(req.doc_type),
             "exp": datetime.now(timezone.utc) + UPLOAD_URL_TTL,
         },
@@ -292,7 +315,7 @@ async def request_upload_url(
 )
 async def confirm_upload(
     req: ConfirmUploadRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentResponse:
     settings = get_settings()
@@ -328,8 +351,10 @@ async def confirm_upload(
 
     epic_id = UUID(claims["epic"]) if claims.get("epic") else None
     ticket_id = UUID(claims["ticket"]) if claims.get("ticket") else None
+    incident_id = UUID(claims["incident"]) if claims.get("incident") else None
+    await _validate_target(db, epic_id, ticket_id, incident_id)
     _, stem, ext = _clean_filename(claims["fn"])
-    filename = await _dedupe_filename(db, stem, ext, epic_id, ticket_id)
+    filename = await _dedupe_filename(db, stem, ext, epic_id, ticket_id, incident_id)
 
     final_key = "documents/" + pending_key.split("/", 1)[1]
     await storage.move(pending_key, final_key)
@@ -337,6 +362,7 @@ async def confirm_upload(
     document = Document(
         epic_id=epic_id,
         ticket_id=ticket_id,
+        incident_id=incident_id,
         filename=filename,
         file_path=final_key,
         file_size=size,
@@ -348,12 +374,11 @@ async def confirm_upload(
     try:
         await db.commit()
     except Exception:
-        # Epic/ticket deleted meanwhile, or any DB failure: do not leave an
-        # unreferenced object behind.
+        # Si se elimina el destino o falla la base, no dejar objetos sin referencia.
         await db.rollback()
         await storage.delete(final_key)
         raise
-    await db.refresh(document)
+    await db.refresh(document, attribute_names=["uploaded_by", "created_at"])
     return document
 
 
@@ -369,7 +394,7 @@ async def confirm_upload(
 )
 async def request_download_url(
     doc_id: UUID,
-    current_user=Depends(get_current_user),
+    current_user=Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ) -> DownloadUrlResponse:
     document = await _get_document(db, doc_id)
@@ -543,15 +568,19 @@ async def translate_document_download(
 )
 async def delete_document(
     doc_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     document = await _get_document(db, doc_id)
 
-    if document.uploaded_by_id != current_user.id and not is_admin_or_leader(current_user):
+    # NEW-02: en tickets e incidencias eliminan el autor y ADMIN.
+    # Conservar los permisos previos de los documentos exclusivos de épicas.
+    can_manage = (get_role_name(current_user) == "ADMIN" if document.ticket_id or document.incident_id
+                  else is_admin_or_leader(current_user))
+    if document.uploaded_by_id != current_user.id and not can_manage:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo quien subió el documento, ADMIN o TEAM_LEADER pueden eliminarlo",
+            detail="No tienes permiso para eliminar este archivo",
         )
 
     await db.delete(document)

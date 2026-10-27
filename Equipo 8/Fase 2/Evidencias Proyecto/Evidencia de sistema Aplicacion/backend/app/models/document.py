@@ -27,7 +27,7 @@ class Document(Base, BaseEntity):
 
     __table_args__ = (
         CheckConstraint(
-            "(epic_id IS NOT NULL) OR (ticket_id IS NOT NULL)",
+            "(epic_id IS NOT NULL) OR (ticket_id IS NOT NULL) OR (incident_id IS NOT NULL)",
             name="ck_documents_has_target",
         ),
     )
@@ -51,6 +51,12 @@ class Document(Base, BaseEntity):
     ticket_id: Mapped[PyUUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    incident_id: Mapped[PyUUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("incidents.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )

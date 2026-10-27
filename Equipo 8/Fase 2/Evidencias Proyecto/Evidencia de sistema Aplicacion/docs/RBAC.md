@@ -154,6 +154,13 @@ la URL firmada que devuelven es la única credencial frente al bucket y dura
 15 min (subida) o 5 min (descarga). `POST /confirm` solo lo acepta el mismo
 usuario que pidió la URL de subida.
 
+### Adjuntos de tickets e incidencias (NEW-02)
+
+Usuarios autenticados y activos pueden subir, listar y descargar archivos.
+Solo el autor de la carga y ADMIN pueden eliminar adjuntos de tickets o incidencias.
+En documentos exclusivos de épicas se conserva la matriz anterior.
+Ver [alcance, formatos y migración de NEW-02](NEW-02.md).
+
 ### Notificaciones (`/api/notifications`)
 
 No usan `require_role`: cada consulta se filtra por `current_user.id` en la

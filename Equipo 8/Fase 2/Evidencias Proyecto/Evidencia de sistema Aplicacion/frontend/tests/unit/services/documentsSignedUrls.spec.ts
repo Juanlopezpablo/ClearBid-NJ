@@ -52,6 +52,7 @@ describe('api.documents with signed URLs', () => {
       content_type: 'text/plain',
       epic_id: null,
       ticket_id: 't-1',
+      incident_id: null,
       doc_type: 'CODE',
     })
     expect(fetchMock).toHaveBeenCalledWith(SIGNED.url, {

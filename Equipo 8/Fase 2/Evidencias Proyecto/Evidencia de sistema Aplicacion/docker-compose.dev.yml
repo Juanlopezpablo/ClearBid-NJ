@@ -75,6 +75,9 @@ services:
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
+    # En desarrollo la API escucha en 8000, no en el 8080 de la imagen de producción.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
     # Puerto fijo a 8000 aquí (distinto del default de producción, 8010):
     # docker-compose.yml también publica su propio ${BACKEND_PORT:-8010},
     # así que ambos coexisten sin chocar (host ports distintos). Se

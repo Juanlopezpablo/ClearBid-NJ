@@ -9,6 +9,136 @@ upload-url → PUT al almacenamiento → confirm; download-url → GET.
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# NEW-02: evidencias de tickets e incidencias, sin videos ni audios.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def incidencia(client, dev_headers):
+    res = await client.post("/api/incidents/", headers=dev_headers, json={
+        "title": "Incidencia para pruebas de adjuntos", "description": "Solo datos de prueba",
+        "severity": "P3", "affected_environment": "DEV",
+    })
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+async def test_new02_adjuntar_a_incidencia_listar_y_descargar(client, dev_headers, incidencia, ticket):
+    res = await _subir(client, dev_headers, "evidencia.txt", b"evidencia",
+                       incidentId=incidencia["id"])
+    assert res.status_code == 201, res.text
+    doc = res.json()
+    assert doc["incident_id"] == incidencia["id"]
+    assert doc["ticket_id"] is None
+    assert doc["uploaded_by"]["full_name"]
+    listado = await client.get("/api/documents/", headers=dev_headers,
+                                params={"incidentId": incidencia["id"]})
+    assert [row["id"] for row in listado.json()] == [doc["id"]]
+    listado_ticket = await client.get("/api/documents/", headers=dev_headers,
+                                      params={"ticketId": ticket["id"]})
+    assert listado_ticket.json() == []
+    descarga = await _descargar(client, dev_headers, doc["id"])
+    assert descarga.content == b"evidencia"
+
+
+@pytest.mark.parametrize("extension,mime", [
+    ("png", "image/png"), ("jpg", "image/jpeg"), ("jpeg", "image/jpeg"), ("webp", "image/webp"),
+])
+async def test_new02_capturas_con_mime_canonico(client, dev_headers, ticket, extension, mime):
+    res = await _subir(client, dev_headers, f"captura.{extension}", b"imagen de prueba",
+                       "application/octet-stream", ticket_id=ticket["id"])
+    assert res.status_code == 201, res.text
+    assert res.json()["mime_type"] == mime
+    assert (await _descargar(client, dev_headers, res.json()["id"])).content == b"imagen de prueba"
+
+
+@pytest.mark.parametrize("nombre,mime", [
+    ("video.mp4", "video/mp4"), ("audio.mp3", "audio/mpeg"),
+    ("audio.wav", "audio/wav"), ("captura.svg", "image/svg+xml"),
+    ("video.txt", "video/mp4"), ("sin-extension", "application/octet-stream"),
+])
+async def test_new02_rechaza_formatos_fuera_de_alcance(client, dev_headers, ticket, nombre, mime):
+    res = await _pedir_url(client, dev_headers, nombre, b"x", mime, ticketId=ticket["id"])
+    assert res.status_code == 400
+
+
+async def test_new02_no_mezcla_destinos(client, dev_headers, incidencia, ticket):
+    res = await _pedir_url(client, dev_headers, "x.txt", b"x",
+                           incident_id=incidencia["id"], ticket_id=ticket["id"])
+    assert res.status_code == 400
+
+
+async def test_new02_incidencia_inexistente(client, dev_headers):
+    res = await _pedir_url(client, dev_headers, "x.txt", b"x",
+                           incident_id="00000000-0000-0000-0000-000000000000")
+    assert res.status_code == 404
+
+
+@pytest.mark.parametrize("destino", ["ticket", "incidencia"])
+async def test_new02_solo_autor_y_admin_eliminan(
+    client, dev_headers, dev2_headers, leader_headers, admin_headers, ticket, incidencia, destino
+):
+    target = {"ticket_id": ticket["id"]} if destino == "ticket" else {"incident_id": incidencia["id"]}
+    res = await _subir(client, dev_headers, "permisos.txt", b"privado del test", **target)
+    assert res.status_code == 201
+    url = f"/api/documents/{res.json()['id']}"
+    for headers in (dev2_headers, leader_headers):
+        assert (await client.delete(url, headers=headers)).status_code == 403
+        assert (await client.get(f"{url}/download-url", headers=headers)).status_code == 200
+    assert (await client.delete(url, headers=admin_headers)).status_code == 204
+
+
+async def test_new02_revalida_destino_antes_de_confirmar(client, dev_headers, incidencia):
+    from sqlalchemy import delete
+
+    from app.database import get_session_maker
+    from app.models import Incident
+
+    res = await _pedir_url(client, dev_headers, "pendiente.txt", b"x",
+                           incident_id=incidencia["id"])
+    signed = res.json()
+    await client.put(signed["url"], content=b"x", headers=signed["headers"])
+    async with get_session_maker()() as db:
+        await db.execute(delete(Incident).where(Incident.id == incidencia["id"]))
+        await db.commit()
+    res = await client.post("/api/documents/confirm", headers=dev_headers,
+                             json={"upload_token": signed["upload_token"]})
+    assert res.status_code == 404
+
+
+async def test_new02_usuario_inactivo_no_accede(client, dev_headers, dev_id, ticket):
+    from uuid import UUID
+
+    from sqlalchemy import update
+
+    from app.database import get_session_maker
+    from app.models import User
+
+    res = await _subir(client, dev_headers, "activo.txt", b"x", ticket_id=ticket["id"])
+    doc_id = res.json()["id"]
+    async with get_session_maker()() as db:
+        await db.execute(update(User).where(User.id == UUID(dev_id)).values(is_active=False))
+        await db.commit()
+    assert (await client.get("/api/documents/", headers=dev_headers)).status_code == 403
+    assert (await client.get(f"/api/documents/{doc_id}/download-url", headers=dev_headers)).status_code == 403
+    assert (await client.delete(f"/api/documents/{doc_id}", headers=dev_headers)).status_code == 403
+
+
+async def test_new02_borrar_incidencia_elimina_metadatos_por_cascada(client, dev_headers, incidencia):
+    from uuid import UUID
+
+    from sqlalchemy import delete
+
+    from app.database import get_session_maker
+    from app.models import Document, Incident
+
+    res = await _subir(client, dev_headers, "cascada.txt", b"x", incident_id=incidencia["id"])
+    async with get_session_maker()() as db:
+        await db.execute(delete(Incident).where(Incident.id == UUID(incidencia["id"])))
+        await db.commit()
+        assert await db.get(Document, UUID(res.json()["id"])) is None
+
+
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
