@@ -29,6 +29,12 @@ import { useAuthStore } from '@/stores/auth'
  */
 const routes: RouteRecordRaw[] = [
   {
+    path: '/tickets/search',
+    name: 'TicketSearch',
+    component: () => import('@/views/TicketSearchView.vue'),
+    meta: { requiresAuth: true, title: 'Búsqueda avanzada - CoreStream' },
+  },
+  {
     /**
      * Ruta raíz. Antes resolvía el destino con un `redirect(to)` síncrono
      * que leía accessToken de localStorage — funcionaba porque el token

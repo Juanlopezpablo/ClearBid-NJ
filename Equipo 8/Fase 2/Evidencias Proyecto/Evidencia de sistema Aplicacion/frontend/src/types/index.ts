@@ -587,6 +587,7 @@ export interface TeamDetail extends Team {
  * Es la unidad de trabajo más pequeña y granular del sistema
  */
 export interface Ticket {
+  labels?: string[]
   /**
    * Identificador único del ticket
    */

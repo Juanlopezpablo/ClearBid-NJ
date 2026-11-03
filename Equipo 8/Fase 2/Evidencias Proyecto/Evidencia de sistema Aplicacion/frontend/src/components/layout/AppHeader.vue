@@ -28,7 +28,9 @@
       </div>
 
       <!-- Sección central: Se utiliza para expansión futura -->
-      <div class="flex-1"></div>
+      <div class="flex-1 text-right">
+        <RouterLink to="/tickets/search" class="text-sm text-[var(--text-primary)] hover:underline">Buscar tickets</RouterLink>
+      </div>
 
       <!-- Sección derecha: Notificaciones, idioma, ajustes, usuario y modo oscuro -->
       <div class="flex items-center gap-3">

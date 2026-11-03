@@ -86,6 +86,7 @@ const toSubtask = (raw: any): Subtask => ({
 })
 
 const toTicket = (raw: any): Ticket => ({
+  labels: raw.labels ?? [],
   id: raw.id,
   title: raw.title,
   description: raw.description ?? '',
@@ -1229,6 +1230,7 @@ const realApi = {
         title: rawData.title,
         description: rawData.description,
         epic_id: rawData.epicId || rawData.epic_id,
+        labels: rawData.labels ?? [],
         assignee_id: rawData.assigneeId,
         priority: rawData.priority || 'MEDIUM',
         due_date: rawData.dueDate,

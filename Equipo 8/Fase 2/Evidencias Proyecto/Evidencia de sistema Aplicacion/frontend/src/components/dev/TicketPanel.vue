@@ -33,6 +33,7 @@
 
       <!-- BODY (scrollable) -->
       <div class="min-h-0 flex-1 overflow-y-auto">
+        <TicketLabels :key="ticket.id" :ticket-id="ticket.id" />
         <TicketComments :key="ticket.id" :ticket-id="ticket.id" />
         <EvidenceFiles :ticket-id="ticket.id" />
         <!-- Info general -->
@@ -298,6 +299,7 @@
 
 <script setup lang="ts">
 import TicketComments from '@/components/shared/TicketComments.vue'
+import TicketLabels from '@/components/shared/TicketLabels.vue'
 import EvidenceFiles from '@/components/shared/EvidenceFiles.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api } from '@/services/api'

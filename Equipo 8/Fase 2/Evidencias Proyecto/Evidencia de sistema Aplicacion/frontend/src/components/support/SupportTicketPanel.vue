@@ -36,6 +36,7 @@
 
     <!-- Contenido scrollable -->
     <div class="flex-1 p-5 space-y-5">
+      <TicketLabels :key="ticket.id" :ticket-id="ticket.id" />
 
       <!-- Asignación (solo TEAM_LEADER) -->
       <div v-if="authStore.isTeamLeader && ticket.status !== 'RESOLVED'">
@@ -151,6 +152,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import TicketLabels from '@/components/shared/TicketLabels.vue'
 import { useI18n } from 'vue-i18n'
 import type { Ticket, User } from '@/types'
 import { useAuthStore } from '@/stores'

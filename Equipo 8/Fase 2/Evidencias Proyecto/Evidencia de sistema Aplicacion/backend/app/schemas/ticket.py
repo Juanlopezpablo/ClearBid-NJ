@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.subtask import SubtaskResponse
 from app.schemas.user import UserResponse
+from app.schemas.labels import normalize_labels
 
 _PLACEHOLDER_PR = re.compile(
     r'github\.com/owner/repo/|gitlab\.com/owner/repo/|bitbucket\.org/owner/repo/',
@@ -32,6 +33,8 @@ class TicketCreate(BaseModel):
     title: str = Field(..., max_length=255)
     description: Optional[str] = Field(None, max_length=10_000)
     epic_id: UUID
+    labels: list[str] = Field(default_factory=list, max_length=10)
+    _normalize_labels = field_validator("labels")(normalize_labels)
     assignee_id: Optional[UUID] = None
     priority: str = "MEDIUM"
     due_date: Optional[datetime] = None
@@ -97,6 +100,8 @@ class TicketUpdate(BaseModel):
     order_index: Optional[int] = None
     estimated_time_seconds: Optional[int] = None
     time_spent_seconds: Optional[int] = None
+    labels: list[str] = Field(default_factory=list, max_length=10)
+    _normalize_labels = field_validator("labels")(normalize_labels)
     assignee_id: Optional[UUID] = None
 
     @field_validator("title")
@@ -288,6 +293,7 @@ class TicketResponse(BaseModel):
         origin_epic_title: Título de la épica del ticket origen (si aplica)
     """
     id: UUID
+    labels: list[str] = Field(default_factory=list)
     title: str
     description: Optional[str] = None
     epic_id: Optional[UUID] = None
@@ -432,4 +438,10 @@ class TicketEventResponse(BaseModel):
     user: Optional[UserResponse] = None
 
     model_config = {"from_attributes": True}
-    
+
+
+class TicketSearchResponse(BaseModel):
+    items: list[TicketResponse]
+    total: int
+    skip: int
+    limit: int
