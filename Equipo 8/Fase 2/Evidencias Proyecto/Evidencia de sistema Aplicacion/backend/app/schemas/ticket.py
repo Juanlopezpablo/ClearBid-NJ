@@ -8,9 +8,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.labels import normalize_labels
 from app.schemas.subtask import SubtaskResponse
 from app.schemas.user import UserResponse
-from app.schemas.labels import normalize_labels
 
 _PLACEHOLDER_PR = re.compile(
     r'github\.com/owner/repo/|gitlab\.com/owner/repo/|bitbucket\.org/owner/repo/',
@@ -293,6 +293,7 @@ class TicketResponse(BaseModel):
         origin_epic_title: Título de la épica del ticket origen (si aplica)
     """
     id: UUID
+    sprint_id: Optional[UUID] = None
     labels: list[str] = Field(default_factory=list)
     title: str
     description: Optional[str] = None

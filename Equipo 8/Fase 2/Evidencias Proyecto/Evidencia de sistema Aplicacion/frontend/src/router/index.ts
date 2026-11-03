@@ -29,6 +29,12 @@ import { useAuthStore } from '@/stores/auth'
  */
 const routes: RouteRecordRaw[] = [
   {
+    path: '/sprints',
+    name: 'Sprints',
+    component: () => import('@/views/SprintsView.vue'),
+    meta: { requiresAuth: true, title: 'Sprints - CoreStream' },
+  },
+  {
     path: '/tickets/search',
     name: 'TicketSearch',
     component: () => import('@/views/TicketSearchView.vue'),
