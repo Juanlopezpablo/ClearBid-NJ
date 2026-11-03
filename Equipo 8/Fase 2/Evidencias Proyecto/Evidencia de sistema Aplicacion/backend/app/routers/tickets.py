@@ -20,11 +20,14 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, func, or_, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.models.ticket import TicketPriority, TicketType
+from app.schemas.labels import normalize_labels
+from app.schemas.ticket import TicketSearchResponse
 from app.middleware.auth import get_current_user, require_role
 from app.models import (
     Epic,
@@ -137,6 +140,67 @@ async def list_tickets(
         query = query.where(Ticket.assignee_id == assignee_id)
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
+
+
+@router.get("/search", summary="Búsqueda avanzada de tickets", response_model=TicketSearchResponse)
+async def search_tickets(
+    q: str = Query("", max_length=200),
+    labels: list[str] = Query(default=[], max_length=10),
+    status_filter: Optional[TicketStatus] = Query(None),
+    priority: Optional[TicketPriority] = Query(None),
+    ticket_type: Optional[TicketType] = Query(None),
+    application_id: Optional[UUID] = Query(None),
+    assignee_id: Optional[UUID] = Query(None),
+    unassigned: bool = Query(False),
+    created_from: Optional[datetime] = Query(None),
+    created_to: Optional[datetime] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Combina los filtros con AND y exige todas las etiquetas seleccionadas."""
+    if unassigned and assignee_id:
+        raise HTTPException(422, "Elige un responsable o sin asignar, no ambos")
+    if any(value is not None and value.tzinfo is None for value in (created_from, created_to)):
+        raise HTTPException(422, "Las fechas deben incluir zona horaria")
+    if created_from and created_to and created_from > created_to:
+        raise HTTPException(422, "El inicio del período debe ser anterior al final")
+    try:
+        normalized = normalize_labels(labels)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    query = select(Ticket)
+    if q.strip():
+        # Los comodines escritos por el usuario se interpretan como texto literal.
+        text = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{text}%"
+        query = query.where(or_(Ticket.title.ilike(pattern, escape="\\"),
+                                Ticket.description.ilike(pattern, escape="\\"),
+                                cast(Ticket.id, String).ilike(pattern, escape="\\")))
+    if normalized:
+        query = query.where(Ticket.labels.contains(normalized))
+    for column, value in ((Ticket.status, status_filter), (Ticket.priority, priority),
+                          (Ticket.ticket_type, ticket_type), (Ticket.assignee_id, assignee_id)):
+        if value is not None:
+            query = query.where(column == value)
+    if unassigned:
+        query = query.where(Ticket.assignee_id.is_(None))
+    if application_id:
+        query = query.join(Epic, Ticket.epic_id == Epic.id).where(Epic.application_id == application_id)
+    if created_from:
+        query = query.where(Ticket.created_at >= created_from)
+    if created_to:
+        query = query.where(Ticket.created_at <= created_to)
+    total = await db.scalar(select(func.count()).select_from(query.subquery()))
+    result = await db.execute(query.options(
+        selectinload(Ticket.assignee).selectinload(User.role),
+        selectinload(Ticket.epic).selectinload(Epic.application),
+        selectinload(Ticket.subtasks),
+        selectinload(Ticket.linked_ticket).selectinload(Ticket.epic),
+    ).order_by(Ticket.created_at.desc(), Ticket.id).offset(skip).limit(limit))
+    return {"items": [TicketResponse.model_validate(ticket) for ticket in result.scalars()],
+            "total": total, "skip": skip, "limit": limit}
 
 
 @router.get(
