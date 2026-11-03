@@ -9,6 +9,7 @@ from .meeting import AttendanceStatus, Meeting, MeetingAttendance, MeetingType
 from .notification import Notification, NotificationType
 from .password_reset_token import PasswordResetToken
 from .role import Role, UserRole
+from .sprint import Sprint
 from .subtask import Subtask
 from .team import Team
 from .team_member import TeamMember
@@ -17,6 +18,7 @@ from .ticket_event import TicketEvent, TicketEventType
 from .user import User
 
 __all__ = [
+    "Sprint",
     "TicketComment",
     "Base",
     "BaseEntity",

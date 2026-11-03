@@ -7,7 +7,7 @@ from uuid import UUID as PyUUID
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -58,6 +58,7 @@ class Ticket(Base, BaseEntity):
     __tablename__ = "tickets"
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    sprint_id: Mapped[PyUUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sprints.id", ondelete="SET NULL"), nullable=True, index=True)
     labels: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
     description: Mapped[str | None] = mapped_column(String(3000), nullable=True)
     status: Mapped[TicketStatus] = mapped_column(

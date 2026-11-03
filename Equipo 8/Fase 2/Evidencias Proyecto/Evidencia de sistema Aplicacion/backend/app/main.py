@@ -28,6 +28,7 @@ from app.routers import (
     invitations,
     meetings,
     notifications,
+    sprints,
     subtasks,
     support_tickets,
     teams,
@@ -149,6 +150,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(comments.router)
+app.include_router(sprints.router)
 app.include_router(users.router, prefix="/api/users")
 app.include_router(invitations.router)  # prefijo embebido en el router: /api/invitations
 app.include_router(applications.router, prefix="/api/applications")
