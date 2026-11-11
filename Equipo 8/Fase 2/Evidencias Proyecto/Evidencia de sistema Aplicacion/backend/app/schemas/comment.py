@@ -26,6 +26,11 @@ class CommentResponse(BaseModel):
     updated_at: datetime
 
 
+class OfflineCommentWrite(CommentWrite):
+    client_id: UUID
+    author_id: UUID
+
+
 class MentionUser(BaseModel):
     id: UUID
     full_name: str

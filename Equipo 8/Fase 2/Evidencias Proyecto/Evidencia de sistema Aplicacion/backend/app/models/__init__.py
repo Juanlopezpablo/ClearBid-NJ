@@ -7,6 +7,7 @@ from .incident import AffectedEnvironment, Incident, IncidentSeverity, IncidentS
 from .invitation import Invitation
 from .meeting import AttendanceStatus, Meeting, MeetingAttendance, MeetingType
 from .notification import Notification, NotificationType
+from .offline_operation import OfflineCommentOperation
 from .password_reset_token import PasswordResetToken
 from .role import Role, UserRole
 from .sprint import Sprint
@@ -18,6 +19,7 @@ from .ticket_event import TicketEvent, TicketEventType
 from .user import User
 
 __all__ = [
+    "OfflineCommentOperation",
     "Sprint",
     "TicketComment",
     "Base",

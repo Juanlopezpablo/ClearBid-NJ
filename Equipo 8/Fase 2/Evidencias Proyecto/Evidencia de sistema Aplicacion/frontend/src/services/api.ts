@@ -12,6 +12,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios'
+import { cacheTickets, getOfflineOwner } from '@/services/offlineDb'
 import type {
   User,
   UserRole,
@@ -292,6 +293,10 @@ const createApiClient = (): AxiosInstance => {
    */
   instance.interceptors.request.use(
     (config) => {
+      if (!navigator.onLine && config.method?.toLowerCase() !== 'get') {
+        return Promise.reject(new Error('Esta acción requiere conexión. Puedes guardar nuevos comentarios desde Sin conexión.'))
+      }
+      ;(config as any)._offlineOwner = getOfflineOwner()
       const token = authState.accessToken
 
       if (token) {
@@ -323,7 +328,13 @@ const createApiClient = (): AxiosInstance => {
    * aceptar esa cookie; se lee del cookie csrf_token, que sí es legible.
    */
   instance.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      const owner = (response.config as any)?._offlineOwner
+      if (owner && owner === getOfflineOwner() && /\/(tickets|support-tickets|epics)(\/|$)/.test(response.config.url || '')) {
+        void cacheTickets(owner, response.data).catch(() => window.dispatchEvent(new Event('offline-storage-error')))
+      }
+      return response
+    },
 
     async (error: AxiosError) => {
       const originalRequest = error.config as any

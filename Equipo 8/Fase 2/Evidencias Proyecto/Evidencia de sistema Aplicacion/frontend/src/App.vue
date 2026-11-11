@@ -21,6 +21,7 @@
       RouterView renderiza el componente correspondiente a la ruta actual
       Cambios en la ruta actualizarán automáticamente este componente
     -->
+    <OfflineStatus />
     <RouterView />
 
     <!--
@@ -46,6 +47,7 @@ import { useRouter } from 'vue-router'
 import NotificationContainer from '@/components/NotificationContainer.vue'
 import GlobalDialog from '@/components/common/GlobalDialog.vue'
 import IdlePrompt from '@/components/common/IdlePrompt.vue'
+import OfflineStatus from '@/components/common/OfflineStatus.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 
@@ -84,7 +86,7 @@ const router = useRouter()
 const initializeApp = async (): Promise<void> => {
   const authStore = useAuthStore()
   try {
-    await authStore.initialize()
+    await authStore.ensureInitialized()
   } catch (error) {
     console.warn('Failed to initialize auth, clearing session', error)
     // initialize() falla en CUALQUIER visita sin sesión (primera carga sin

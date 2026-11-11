@@ -4,6 +4,7 @@
       <h3 class="text-sm font-semibold">Comentarios</h3>
       <button type="button" class="text-sm underline" :disabled="busy || loading" @click="load()">Actualizar</button>
     </div>
+    <p class="text-xs mb-3"><RouterLink to="/offline" class="underline">Sin conexión: consultar tickets guardados y guardar comentarios pendientes</RouterLink></p>
     <p v-if="error" role="alert" class="text-red-500 text-sm mb-3">{{ error }}</p>
     <p v-if="loading" role="status" class="text-sm">Cargando comentarios…</p>
     <p v-else-if="!comments.length" class="text-sm text-[var(--text-muted)]">Todavía no hay comentarios.</p>
@@ -172,6 +173,7 @@ function searchUsers() {
   }, 250)
 }
 async function save() {
+  if (!navigator.onLine) { error.value = 'Abre Sin conexión para guardar un nuevo comentario pendiente. Editar comentarios requiere conexión.'; return }
   if (busy.value || !body.value.trim()) return
   const ticketId = props.ticketId
   busy.value = true

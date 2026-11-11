@@ -129,3 +129,12 @@ app.directive('can', vCan)
  * y actualiza reactivamente los cambios
  */
 app.mount('#app')
+
+// La precarga se habilita en compilaciones publicadas; Vite de desarrollo sigue usando su servidor.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      window.dispatchEvent(new Event('offline-shell-error'))
+    })
+  })
+}
