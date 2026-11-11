@@ -15,6 +15,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import os from 'os'
+import { offlineShell } from './offlineShell'
 
 // Obtener la dirección IP local (no localhost para compatibilidad)
 const getLocalIP = () => {
@@ -31,7 +32,12 @@ const getLocalIP = () => {
 
 export default defineConfig({
   // Plugins: activamos el plugin de Vue 3 para procesar componentes .vue
-  plugins: [vue()],
+  plugins: [vue(), offlineShell()],
+
+  preview: {
+    port: 4173,
+    proxy: { '/api': { target: process.env.VITE_API_TARGET ?? 'http://localhost:8000', ws: true } },
+  },
 
   // Resolución de módulos: configuramos alias para importaciones más limpias
   resolve: {

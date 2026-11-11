@@ -1,4 +1,5 @@
 """NEW-01: comentarios de tickets y menciones; notificaciones solo internas."""
+import hashlib
 import re
 from datetime import datetime, timezone
 from uuid import UUID
@@ -11,7 +12,8 @@ from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import Ticket, User
 from app.models.comment import TicketComment
-from app.schemas.comment import CommentResponse, CommentWrite, MentionUser
+from app.models.offline_operation import OfflineCommentOperation
+from app.schemas.comment import CommentResponse, CommentWrite, MentionUser, OfflineCommentWrite
 from app.services.notification_service import create_notification, publish_notification
 
 router = APIRouter(prefix="/api/tickets", tags=["Comentarios"])
@@ -98,13 +100,17 @@ async def list_comments(
     return [await response(comment, db) for comment in comments]
 
 
-async def save_comment(comment, data, ticket, user, db):
+async def save_comment(comment, data, ticket, user, db, operation=None):
     body, mentions = await validate_mentions(data.body, db)
     new_mentions = set(mentions) - set(comment.mention_ids or [])
     comment.body = body
     comment.mention_ids = mentions
     comment.updated_at = datetime.now(timezone.utc) if comment.id else comment.created_at
     db.add(comment)
+    if operation is not None:
+        await db.flush()
+        operation.comment_id = comment.id
+        db.add(operation)
     notifications = []
     for user_id in sorted(new_mentions):
         if user_id == str(user.id):
@@ -134,6 +140,35 @@ async def create_comment(
         created_at=now, updated_at=now,
     )
     return await save_comment(comment, data, ticket, current_user, db)
+
+
+@router.post("/{ticket_id}/comments/offline", response_model=CommentResponse, status_code=201)
+async def sync_offline_comment(
+    ticket_id: UUID, data: OfflineCommentWrite,
+    current_user: User = Depends(active_user), db: AsyncSession = Depends(get_db),
+):
+    if data.author_id != current_user.id:
+        raise HTTPException(403, "Este pendiente pertenece a otra cuenta; inicia sesión con su autor")
+    # Serializar por autor evita duplicados incluso entre pestañas o reintentos simultáneos.
+    await db.execute(select(User.id).where(User.id == current_user.id).with_for_update())
+    digest = hashlib.sha256(data.body.encode("utf-8")).hexdigest()
+    operation = await db.scalar(select(OfflineCommentOperation).where(
+        OfflineCommentOperation.author_id == current_user.id,
+        OfflineCommentOperation.client_id == data.client_id,
+    ))
+    if operation is not None:
+        if operation.ticket_id != ticket_id or operation.body_hash != digest:
+            raise HTTPException(409, "El identificador pendiente ya se usó para otro comentario")
+        comment = await db.get(TicketComment, operation.comment_id) if operation.comment_id else None
+        if comment is None:
+            raise HTTPException(410, "El comentario ya se sincronizó y luego fue eliminado; no se volverá a crear")
+        return await response(comment, db)
+    ticket = await get_ticket(ticket_id, db)
+    now = datetime.now(timezone.utc)
+    comment = TicketComment(ticket_id=ticket_id, author_id=current_user.id, mention_ids=[], created_at=now, updated_at=now)
+    operation = OfflineCommentOperation(author_id=current_user.id, client_id=data.client_id,
+        ticket_id=ticket_id, body_hash=digest)
+    return await save_comment(comment, data, ticket, current_user, db, operation)
 
 
 @router.patch("/{ticket_id}/comments/{comment_id}", response_model=CommentResponse)

@@ -29,6 +29,10 @@ import { useAuthStore } from '@/stores/auth'
  */
 const routes: RouteRecordRaw[] = [
   {
+    path: '/offline', name: 'Offline', component: () => import('@/views/OfflineView.vue'),
+    meta: { requiresAuth: false, title: 'Sin conexión - CoreStream' },
+  },
+  {
     path: '/sprints',
     name: 'Sprints',
     component: () => import('@/views/SprintsView.vue'),
@@ -510,6 +514,10 @@ router.beforeEach(
     from: RouteLocationNormalized,
     next: NavigationGuardNext
   ): Promise<void> => {
+    if (!navigator.onLine && (to.meta.requiresAuth || to.path === '/')) {
+      next('/offline')
+      return
+    }
     /**
      * El access token ya no vive en localStorage (plan 3.2): vive en memoria
      * en el store de Pinia, y se restaura de forma asíncrona en la primera

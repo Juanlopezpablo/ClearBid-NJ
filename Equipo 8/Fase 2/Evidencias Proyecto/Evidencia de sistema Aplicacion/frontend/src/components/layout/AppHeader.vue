@@ -30,6 +30,7 @@
       <!-- Sección central: Se utiliza para expansión futura -->
       <div class="flex-1 flex flex-wrap justify-end gap-x-4 gap-y-1">
         <RouterLink to="/sprints" class="text-sm text-[var(--text-primary)] hover:underline">Sprints</RouterLink>
+        <RouterLink to="/offline" class="text-sm text-[var(--text-primary)] hover:underline">Sin conexión</RouterLink>
         <RouterLink to="/tickets/search" class="text-sm text-[var(--text-primary)] hover:underline">Buscar tickets</RouterLink>
       </div>
 
@@ -373,6 +374,13 @@ const userInitials = computed(() => {
  * Cierra la sesión del usuario y redirige al login
  */
 const logout = async () => {
+  try {
+    const { pendingComments } = await import('@/services/offlineDb')
+    const count = authStore.user?.id ? (await pendingComments(authStore.user.id)).length : 0
+    if (count && !await dialogStore.confirm(`Tienes ${count} comentarios pendientes. Se conservarán para sincronizarlos cuando vuelvas a ingresar con esta misma cuenta. ¿Cerrar sesión?`)) return
+  } catch {
+    if (!await dialogStore.confirm('No se pudo comprobar si hay comentarios pendientes. ¿Cerrar sesión?')) return
+  }
   await authStore.logout()
   await router.push('/login')
 }

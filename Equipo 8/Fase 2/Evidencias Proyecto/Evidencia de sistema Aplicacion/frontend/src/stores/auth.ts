@@ -18,6 +18,7 @@ import { UserRole, type User, type AuthTokens } from '@/types'
 import { api, setAuthTokens, clearAuthTokens } from '@/services/api'
 import { useThemeStore } from '@/stores/theme'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { setOfflineOwner, saveProfile, forgetProfile, clearSnapshots } from '@/services/offlineDb'
 
 export const useAuthStore = defineStore('auth', () => {
   // ========== ESTADO REACTIVO ==========
@@ -86,6 +87,10 @@ export const useAuthStore = defineStore('auth', () => {
    * login — es el comportamiento esperado, no un error real.
    */
   const initialize = async (): Promise<void> => {
+    if (!navigator.onLine || localStorage.getItem('corestream-offline-logout')) {
+      clearSession()
+      return
+    }
     try {
       const tokens = await api.auth.refresh()
       applyTokens(tokens)
@@ -130,6 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await api.auth.login({ email, password })
+      localStorage.removeItem('corestream-offline-logout')
       applyTokens(response.tokens)
       isAuthenticated.value = true
 
@@ -165,6 +171,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const userData = await api.auth.getMe()
       user.value = userData
+      setOfflineOwner(userData.id)
+      void saveProfile({ id: userData.id, name: userData.fullName, savedAt: Date.now() })
+        .catch(() => window.dispatchEvent(new Event('offline-storage-error')))
 
       const savedTheme = userData.preferences?.theme
       if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -242,12 +251,16 @@ export const useAuthStore = defineStore('auth', () => {
    * el backend revoca de verdad access y refresh token (plan 3.3).
    */
   const logout = async (): Promise<void> => {
+    const owner = user.value?.id
+    localStorage.setItem('corestream-offline-logout', '1')
     try {
       await api.auth.logout()
     } catch (err) {
       console.error('Error al notificar logout al servidor:', err)
     } finally {
       clearSession()
+      await forgetProfile().catch(() => undefined)
+      if (owner) await clearSnapshots(owner).catch(() => undefined)
     }
   }
 
@@ -255,6 +268,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Limpia toda la información de sesión en memoria.
    */
   const clearSession = (): void => {
+    setOfflineOwner(null)
     disconnectRealtime()
     user.value = null
     accessToken.value = null
