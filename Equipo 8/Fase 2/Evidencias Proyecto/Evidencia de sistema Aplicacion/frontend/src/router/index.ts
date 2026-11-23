@@ -28,6 +28,7 @@ import { useAuthStore } from '@/stores/auth'
  * - /dev/* : Área de desarrollo (requiere rol DEVELOPER o TEAM_LEADER)
  */
 const routes: RouteRecordRaw[] = [
+  { path: '/search', name: 'GlobalSearch', component: () => import('@/views/GlobalSearchView.vue'), meta: { requiresAuth: true, title: 'Búsqueda global - CoreStream' } },
   {
     path: '/offline', name: 'Offline', component: () => import('@/views/OfflineView.vue'),
     meta: { requiresAuth: false, title: 'Sin conexión - CoreStream' },

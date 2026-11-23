@@ -370,6 +370,8 @@ async def confirm_upload(
         doc_type=claims["dt"],
         uploaded_by_id=current_user.id,
     )
+    from app.services.document_search import index_document
+    await index_document(document)
     db.add(document)
     try:
         await db.commit()
