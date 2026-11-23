@@ -29,6 +29,7 @@ from app.routers import (
     meetings,
     notifications,
     sprints,
+    search,
     subtasks,
     support_tickets,
     teams,
@@ -149,6 +150,7 @@ app.add_middleware(
 # Estos routers se crearían en carpeta app/routers/
 
 app.include_router(auth.router, prefix="/api/auth")
+app.include_router(search.router)
 app.include_router(comments.router)
 app.include_router(sprints.router)
 app.include_router(users.router, prefix="/api/users")

@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID as PyUUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,6 +31,9 @@ class Document(Base, BaseEntity):
             name="ck_documents_has_target",
         ),
     )
+
+    search_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    search_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", server_default="pending")
 
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)

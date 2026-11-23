@@ -31,6 +31,7 @@
       <div class="flex-1 flex flex-wrap justify-end gap-x-4 gap-y-1">
         <RouterLink to="/sprints" class="text-sm text-[var(--text-primary)] hover:underline">Sprints</RouterLink>
         <RouterLink to="/offline" class="text-sm text-[var(--text-primary)] hover:underline">Sin conexión</RouterLink>
+        <RouterLink to="/search" class="text-sm text-[var(--text-primary)] hover:underline">Búsqueda global</RouterLink>
         <RouterLink to="/tickets/search" class="text-sm text-[var(--text-primary)] hover:underline">Buscar tickets</RouterLink>
       </div>
 

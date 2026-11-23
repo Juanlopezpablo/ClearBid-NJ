@@ -72,6 +72,9 @@ export default defineConfig({
     // Permitir que encuentre el puerto dinámicamente
     strictPort: false,
 
+    // Docker en Windows puede perder los avisos de cambios de las carpetas compartidas.
+    watch: { usePolling: true, interval: 1000 },
+
     // Configurar HMR para permitir cualquier puerto
     hmr: {
       protocol: 'ws'
