@@ -18,6 +18,7 @@
     aria-label="Navegación principal de desarrollo"
     >
       <nav class="p-6 space-y-4">
+        <router-link to="/home" class="block px-4 py-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-panel)]">Inicio</router-link>
         <h2 class="font-bold text-lg text-[var(--text-primary)] mb-6">
           {{ t('nav.development') }}
         </h2>
