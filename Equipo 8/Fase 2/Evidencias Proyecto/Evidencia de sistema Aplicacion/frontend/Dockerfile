@@ -16,7 +16,7 @@ FROM node:20-bookworm AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm cache clean --force && npm ci --force
+RUN npm cache clean --force && CYPRESS_INSTALL_BINARY=0 npm ci --force
 
 COPY . .
 

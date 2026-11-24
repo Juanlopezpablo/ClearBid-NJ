@@ -191,7 +191,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useDialogStore } from '@/stores/dialog'
 import { lastProfile, pendingComments } from '@/services/offlineDb'
 import { useThemeStore } from '@/stores'
-import { UserRole } from '@/types'
 import logoUrl from '@/assets/logo-corestream.jpeg'
 
 const route = useRoute()
@@ -233,17 +232,12 @@ async function onSubmit() {
     const pending = owner ? await pendingComments(owner).catch(() => []) : []
     if (pending.length && !await useDialogStore().confirm(`Hay ${pending.length} comentarios pendientes de la cuenta anterior. Se conservarán separados y solo se enviarán con una sesión de esa misma cuenta. ¿Continuar?`)) return
     await authStore.login(email.value.trim(), password.value)
-    const user = authStore.user
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
     if (redirect && redirect.startsWith('/')) {
       await router.replace(redirect)
       return
     }
-    if (user?.role === UserRole.ADMIN) {
-      await router.replace({ path: '/admin/builder' })
-    } else {
-      await router.replace({ path: '/dev/workbench' })
-    }
+    await router.replace({ path: '/home' })
   } catch {
     /* mensaje en store */
   } finally {

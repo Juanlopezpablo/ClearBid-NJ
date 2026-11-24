@@ -23,6 +23,7 @@ from app.routers import (
     auth,
     comments,
     documents,
+    dashboard,
     epics,
     incidents,
     invitations,
@@ -150,6 +151,7 @@ app.add_middleware(
 # Estos routers se crearían en carpeta app/routers/
 
 app.include_router(auth.router, prefix="/api/auth")
+app.include_router(dashboard.router)
 app.include_router(search.router)
 app.include_router(comments.router)
 app.include_router(sprints.router)

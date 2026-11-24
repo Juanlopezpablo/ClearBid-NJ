@@ -1,0 +1,99 @@
+version: "3.8"
+# Laboratorio de un nodo: volÃºmenes locales compartidos, sin puertos publicados.
+x-demo-deploy: &demo-deploy
+  placement:
+    constraints: [node.labels.corestream.trv09 == true]
+  restart_policy:
+    condition: any
+    delay: 5s
+  resources:
+    limits: {cpus: "0.50", memory: 128M}
+    reservations: {memory: 32M}
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: corestream_trv09
+      POSTGRES_USER: corestream
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [internal]
+    command: [postgres, -c, max_connections=50, -c, shared_buffers=64MB]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U corestream -d corestream_trv09"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      <<: *demo-deploy
+      resources:
+        limits: {cpus: "0.50", memory: 256M}
+        reservations: {memory: 64M}
+  redis:
+    image: redis:7-alpine
+    secrets: [redis_password]
+    command: [sh, -c, 'umask 077; printf "requirepass %s\nappendonly yes\nmaxmemory 48mb\nmaxmemory-policy noeviction\n" "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf; exec redis-server /tmp/redis.conf']
+    volumes: [redis-data:/data]
+    networks: [internal]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH=$$(cat /run/secrets/redis_password) redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy: *demo-deploy
+  api:
+    image: ${TRV09_API_IMAGE:-corestream-trv09-api:local}
+    environment:
+      ENVIRONMENT: demo
+      DEBUG: "false"
+      SQL_ECHO: "false"
+      STORAGE_BACKEND: local
+      UPLOAD_DIR: /app/storage
+      DB_POOL_SIZE: "2"
+      DB_MAX_OVERFLOW: "1"
+      ALLOWED_ORIGINS: http://localhost:18080,http://127.0.0.1:18080
+      XFF_CLIENT_POSITION: "2"
+    secrets: [db_password, jwt_key, redis_password, demo_password]
+    volumes: [files:/app/storage]
+    networks: [internal]
+    stop_grace_period: 15s
+    deploy:
+      <<: *demo-deploy
+      replicas: ${TRV09_REPLICAS:-1}
+      resources:
+        limits: {cpus: "0.75", memory: 384M}
+        reservations: {memory: 128M}
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+  web:
+    image: ${TRV09_WEB_IMAGE:-corestream-trv09-web:local}
+    networks: [internal]
+    deploy: *demo-deploy
+networks:
+  internal:
+    driver: overlay
+    attachable: true
+volumes:
+  postgres-data:
+  redis-data:
+  files:
+secrets:
+  db_password:
+    external: true
+    name: corestream-trv09-db
+  jwt_key:
+    external: true
+    name: corestream-trv09-jwt
+  redis_password:
+    external: true
+    name: corestream-trv09-redis
+  demo_password:
+    external: true
+    name: corestream-trv09-admin

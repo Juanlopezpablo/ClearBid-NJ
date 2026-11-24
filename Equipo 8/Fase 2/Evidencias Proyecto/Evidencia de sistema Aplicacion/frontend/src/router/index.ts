@@ -28,6 +28,7 @@ import { useAuthStore } from '@/stores/auth'
  * - /dev/* : Área de desarrollo (requiere rol DEVELOPER o TEAM_LEADER)
  */
 const routes: RouteRecordRaw[] = [
+  { path: '/home', name: 'Home', component: () => import('@/views/HomeView.vue'), meta: { requiresAuth: true, requiredRoles: ['ADMIN', 'TEAM_LEADER', 'DEVELOPER'], title: 'Inicio - CoreStream' } },
   { path: '/search', name: 'GlobalSearch', component: () => import('@/views/GlobalSearchView.vue'), meta: { requiresAuth: true, title: 'Búsqueda global - CoreStream' } },
   {
     path: '/offline', name: 'Offline', component: () => import('@/views/OfflineView.vue'),
@@ -178,7 +179,7 @@ const routes: RouteRecordRaw[] = [
          */
         path: '',
         name: 'AdminHome',
-        redirect: '/admin/builder'
+        redirect: '/home'
       },
 
       {
@@ -352,7 +353,7 @@ const routes: RouteRecordRaw[] = [
          */
         path: '',
         name: 'DevHome',
-        redirect: '/dev/workbench'
+        redirect: '/home'
       },
 
       {
@@ -540,7 +541,7 @@ router.beforeEach(
      * la decisión se toma aquí, después de esperar ensureInitialized().
      */
     if (to.path === '/') {
-      next({ path: isAuthenticated ? dashboardPath : '/login' })
+      next({ path: isAuthenticated ? '/home' : '/login' })
       return
     }
 
@@ -566,7 +567,7 @@ router.beforeEach(
      */
     if (requiredRoles && userRole && !requiredRoles.includes(userRole)) {
       next({
-        path: dashboardPath === '/admin' ? '/admin/builder' : '/dev/workbench'
+        path: '/home'
       })
       return
     }

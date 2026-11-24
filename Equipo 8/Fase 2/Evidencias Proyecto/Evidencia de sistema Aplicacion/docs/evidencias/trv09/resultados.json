@@ -1,0 +1,114 @@
+{
+  "date": "2026-11-23",
+  "environment": "Docker Desktop Linux, Swarm de un nodo; 8 CPU logicas y aproximadamente 3.68 GiB disponibles para Docker",
+  "measurements": [
+    {
+      "utc": "2026-11-23T23:30:33.385321+00:00",
+      "replicas": 1,
+      "requests": 120,
+      "concurrency": 6,
+      "errors": 0,
+      "duration_seconds": 3.095,
+      "requests_per_second": 38.77,
+      "median_ms": 127.35,
+      "p95_ms": 291.23,
+      "requests_by_instance": {
+        "6d74a0789338": 120
+      },
+      "file_instances": [
+        "6d74a0789338"
+      ],
+      "shared_file_ok": true,
+      "session_refresh_ok": true,
+      "ticket_id": "17652657-0618-4fb8-800f-a04d2ecf87c9"
+    },
+    {
+      "utc": "2026-11-23T23:31:08.735240+00:00",
+      "replicas": 3,
+      "requests": 120,
+      "concurrency": 6,
+      "errors": 0,
+      "duration_seconds": 6.731,
+      "requests_per_second": 17.83,
+      "median_ms": 64.33,
+      "p95_ms": 2022.71,
+      "requests_by_instance": {
+        "6d74a0789338": 40,
+        "709b129b38de": 40,
+        "fdb9e6738077": 40
+      },
+      "file_instances": [
+        "6d74a0789338",
+        "709b129b38de",
+        "fdb9e6738077"
+      ],
+      "shared_file_ok": true,
+      "session_refresh_ok": true,
+      "ticket_id": "17652657-0618-4fb8-800f-a04d2ecf87c9"
+    },
+    {
+      "utc": "2026-11-23T23:31:45.058864+00:00",
+      "replicas": 3,
+      "requests": 120,
+      "concurrency": 6,
+      "errors": 0,
+      "duration_seconds": 1.636,
+      "requests_per_second": 73.37,
+      "median_ms": 46.64,
+      "p95_ms": 265.45,
+      "requests_by_instance": {
+        "fdb9e6738077": 40,
+        "6d74a0789338": 40,
+        "b298ed8921c3": 40
+      },
+      "file_instances": [
+        "6d74a0789338",
+        "b298ed8921c3",
+        "fdb9e6738077"
+      ],
+      "shared_file_ok": true,
+      "session_refresh_ok": true,
+      "ticket_id": "17652657-0618-4fb8-800f-a04d2ecf87c9"
+    }
+  ],
+  "recovery": {
+    "before": [
+      "709b129b38de",
+      "fdb9e6738077",
+      "6d74a0789338"
+    ],
+    "replacement": [
+      "b298ed8921c3"
+    ],
+    "after": [
+      "b298ed8921c3",
+      "fdb9e6738077",
+      "6d74a0789338"
+    ],
+    "stopped": "709b129b38de"
+  },
+  "restart": {
+    "utc": "2026-11-23T23:35:06.600999+00:00",
+    "replicas": 3,
+    "requests": 120,
+    "concurrency": 6,
+    "errors": 0,
+    "duration_seconds": 1.734,
+    "requests_per_second": 69.22,
+    "median_ms": 57.35,
+    "p95_ms": 201.27,
+    "requests_by_instance": {
+      "49594856020b": 40,
+      "be930baa4cd2": 40,
+      "94e2eb62fa02": 40
+    },
+    "file_instances": [
+      "49594856020b",
+      "94e2eb62fa02",
+      "be930baa4cd2"
+    ],
+    "shared_file_ok": true,
+    "session_refresh_ok": true,
+    "ticket_id": "17652657-0618-4fb8-800f-a04d2ecf87c9"
+  }
+}
